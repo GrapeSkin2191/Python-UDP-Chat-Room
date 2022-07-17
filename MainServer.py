@@ -28,7 +28,7 @@ def chat_thread():
                 client_addresses.append(address)
 
                 # 打印ip地址列表
-                print(client_addresses)
+                # print(client_addresses)
 
             decoded_msg = received_msg.decode()
             # 接收到客户端的测试消息
