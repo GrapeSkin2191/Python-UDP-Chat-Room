@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# 默认忽略的文件
+/shelf/
+/workspace.xml
