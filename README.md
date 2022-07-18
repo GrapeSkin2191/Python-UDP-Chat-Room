@@ -15,7 +15,7 @@ The server will generate a log when running.
 To the client, the config can provide the address of the server. To the server, it can provide the address it uses.   
 The config is also used to configure the logger.   
 ### To change the address
-The default config should be like this *(if it is not, it is a bug, lol)*:
+The default config should be like this *(if it is not, it is a mistake, lol)*:
 ```
 [socket]
 Host=127.0.0.1
