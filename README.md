@@ -11,6 +11,8 @@ Also note that the server will not know the client is exiting if you end the cli
 ## About the server
 The server will generate a log when running.
 
+If you find a warning at the end of the log, don't worry, that's a bug. 
+
 ## How to change the config (both the client and the server)
 To the client, the config can provide the address of the server. To the server, it can provide the address it uses.   
 The config is also used to configure the logger.   
