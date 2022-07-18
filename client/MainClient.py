@@ -8,9 +8,11 @@ import random
 import socket
 import sys
 import threading
-import time
 
 import wx
+
+stop = False
+chat = []
 
 try:
     logging.config.fileConfig('udpclient.ini')
@@ -25,12 +27,10 @@ except Exception as e:
 
 logger.info('客户端启动...')
 
-stop = False
-
 logger.info('加载socket配置中')
-config = configparser.ConfigParser()
-config.read('udpclient.ini', encoding='utf-8')
 try:
+    config = configparser.ConfigParser()
+    config.read('udpclient.ini', encoding='utf-8')
     HOST = config['socket']['Host']
     PORT = config.getint('socket', 'Port')
 except Exception as e:
@@ -51,7 +51,6 @@ class ReceiveThread(threading.Thread):
 
         while not stop:
             try:
-                # FIXME 不知道为什么报错
                 data, _ = s.recvfrom(10240)
                 decoded_data = data.decode()
                 logger.debug('收到消息：' + decoded_data)
@@ -60,11 +59,9 @@ class ReceiveThread(threading.Thread):
                 # print('receive: ' + decoded_data)
 
                 self.frame.update_chat(decoded_data)
-            # except OSError:
-            #     pass
             except Exception as e:
-                logger.error('客户端发生错误')
-                logger.error('错误信息：{0}'.format(e))
+                logger.warning('客户端发生错误')
+                logger.warning('错误信息：{0}'.format(e))
 
         s.close()
         sys.exit(0)
@@ -80,18 +77,14 @@ class SendThread(threading.Thread):
         global s
 
         try:
-            # input_str = input('send: ')
             msg_dict = {'user_name': self.user_name,
                         'time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'msg': self.msg}
             msg_json = json.dumps(msg_dict)
             s.sendto(msg_json.encode(), server_address)
             logger.debug('发送消息：' + msg_json)
-
-            # if input_str == 'bye':
-            #     stop = True
         except Exception as e:
-            logger.error('客户端发生错误')
-            logger.error('错误信息：{0}'.format(e))
+            logger.warning('客户端发生错误')
+            logger.warning('错误信息：{0}'.format(e))
 
 
 class ChatFrame(wx.Frame):
@@ -133,15 +126,21 @@ class ChatFrame(wx.Frame):
         user_name = self.name_tc.GetValue()
         msg = self.input_tc.GetValue()
         self.input_tc.SetValue('')
+        self.input_tc.SetFocus()
         if user_name and msg:
             SendThread('Send-Thread', user_name, msg).start()
 
     def on_close(self, event):
         global stop
 
+        if self.chat_tc.GetValue():
+            logger.info('保存聊天中...')
+            with open('chat_client.txt', 'a+', encoding='utf-8') as f:
+                f.write(self.chat_tc.GetValue())
+
         logger.info('结束程序中...')
-        stop = True
         s.sendto(b'bye', server_address)
+        stop = True
         # self.Close()
         self.Destroy()
 
@@ -171,21 +170,18 @@ class App(wx.App):
         logger.info('连接服务器中...')
         try:
             s.sendto(b'test', server_address)
+            s.settimeout(5)
             d, _ = s.recvfrom(10240)
             # print(d.decode())
-            for _ in range(10):
-                if d.decode() != 'test':
-                    time.sleep(0.25)
-                    s.sendto(b'test', server_address)
-                else:
-                    logger.info('连接服务器成功')
-                    break
-            # 失败10次
+            if d.decode() == 'test':
+                logger.info('连接服务器成功')
+                s.settimeout(None)
             else:
                 frame.fail_to_connect()
                 return True
         except Exception as e:
             frame.fail_to_connect(e)
+            return True
 
         frame.Show()
 
