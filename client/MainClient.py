@@ -56,7 +56,6 @@ class ReceiveThread(threading.Thread):
                 logger.debug('收到消息：' + decoded_data)
                 if decoded_data == 'bye':
                     break
-                # print('receive: ' + decoded_data)
 
                 self.frame.update_chat(decoded_data)
             except Exception as e:
