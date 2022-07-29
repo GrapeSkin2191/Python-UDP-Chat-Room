@@ -1,13 +1,12 @@
 # coding=utf-8
 
 import configparser
+import datetime
 import json
 import logging.config
 import socket
 import sys
 import threading
-
-import keyboard
 
 stop = False
 
@@ -68,7 +67,6 @@ def chat_thread():
 
             # 接受来自客户端的消息
             received_msg, address = s.recvfrom(10240)
-            data.append(received_msg)
 
             # 如果ip地址是新的，就加入列表
             if client_addresses.count(address) == 0:
@@ -81,16 +79,18 @@ def chat_thread():
 
             # 接收到客户端的测试消息
             if decoded_msg == 'test':
-                data.remove(received_msg)
                 s.sendto(received_msg, address)
             # 客户端退出
             elif decoded_msg == 'bye':
                 logger.info('{0}离开了'.format(address))
                 client_addresses.remove(address)
-                data.remove(received_msg)
                 s.sendto(received_msg, address)
             else:
                 msg_dict = json.loads(decoded_msg)
+                msg_dict['time'] = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                decoded_msg = json.dumps(msg_dict)
+                received_msg = decoded_msg.encode()
+                data.append(received_msg)
                 msg = '[{0}]{1}: {2}'.format(msg_dict['time'], msg_dict['user_name'], msg_dict['msg'])
                 logger.info(msg)
 
@@ -111,7 +111,6 @@ if __name__ == '__main__':
     chat_thr = threading.Thread(target=chat_thread, name='Chat-Thread')
     chat_thr.start()
 
-    # keyboard.wait('esc')
     input('随时输入回车以结束程序\n')
     logger.info('结束程序中')
     stop = True

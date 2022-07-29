@@ -1,7 +1,6 @@
 # coding=utf-8
 
 import configparser
-import datetime
 import json
 import logging.config
 import random
@@ -27,14 +26,18 @@ except Exception as e:
 
 logger.info('客户端启动...')
 
-logger.info('加载socket配置中')
+logger.info('加载配置中')
 try:
     config = configparser.ConfigParser()
     config.read('udpclient.ini', encoding='utf-8')
-    HOST = config['socket']['Host']
-    PORT = config.getint('socket', 'Port')
+
+    HOST = config['socket']['host']
+    PORT = config.getint('socket', 'port')
+
+    font_name = config['font']['name']
+    font_size = config.getint('font', 'size')
 except Exception as e:
-    logger.error('读取socket配置失败，请检查配置信息')
+    logger.error('读取配置失败，请检查配置信息')
     logger.error('错误信息：{0}'.format(e))
     sys.exit(0)
 server_address = (socket.gethostbyname(HOST), PORT)
@@ -77,7 +80,7 @@ class SendThread(threading.Thread):
 
         try:
             msg_dict = {'user_name': self.user_name,
-                        'time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 'msg': self.msg}
+                        'time': '', 'msg': self.msg}
             msg_json = json.dumps(msg_dict)
             s.sendto(msg_json.encode(), server_address)
             logger.debug('发送消息：' + msg_json)
@@ -88,9 +91,11 @@ class SendThread(threading.Thread):
 
 class ChatFrame(wx.Frame):
     def __init__(self):
-        super().__init__(parent=None, title='UDP聊天室 ver1.0', size=(700, 550))
+        super().__init__(parent=None, title='UDP聊天室 ver1.0', size=(1000, 700))
         self.Center()
         self.SetMinClientSize((300, 300))
+        self.SetFont(wx.Font(font_size, wx.FONTFAMILY_DEFAULT, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_NORMAL,
+                             faceName=font_name))
         self.SetIcon(wx.Icon('udpclient.ico', wx.BITMAP_TYPE_ICO))
 
         self.Bind(wx.EVT_CLOSE, self.on_close)
@@ -98,21 +103,26 @@ class ChatFrame(wx.Frame):
         panel = wx.Panel(parent=self)
         vbox = wx.BoxSizer(wx.VERTICAL)
 
+        # 聊天显示框
         self.chat_tc = wx.TextCtrl(panel, style=wx.TE_MULTILINE | wx.TE_READONLY)
-        vbox.Add(self.chat_tc, 7, wx.EXPAND | wx.CENTER | (wx.ALL ^ wx.BOTTOM), 10)
+        vbox.Add(self.chat_tc, 6, wx.EXPAND | wx.CENTER | (wx.ALL ^ wx.BOTTOM), 10)
 
+        # 下面的边框
         sb = wx.StaticBox(panel)
         hsbox = wx.StaticBoxSizer(sb, wx.HORIZONTAL)
 
+        # 昵称输入框
         self.name_tc = wx.TextCtrl(panel)
         self.name_tc.SetValue('用户{0:0>4d}'.format(random.randint(1, 9999)))
         hsbox.Add(self.name_tc, 1, wx.EXPAND | wx.CENTER | (wx.ALL ^ wx.RIGHT), 5)
 
-        self.input_tc = wx.TextCtrl(panel)
+        # 消息输入框
+        self.input_tc = wx.TextCtrl(panel, style=wx.TE_MULTILINE)
         self.input_tc.SetFocus()
         hsbox.Add(self.input_tc, 8, wx.EXPAND | wx.CENTER | wx.ALL, 5)
         self.input_tc.Bind(wx.EVT_KEY_UP, self.on_key_up)
 
+        # 发送按钮
         self.send_btn = wx.Button(panel, label='发送')
         self.Bind(wx.EVT_BUTTON, self.on_send_btn_click, self.send_btn)
         hsbox.Add(self.send_btn, 1, wx.EXPAND | wx.CENTER | wx.ALL, 5)
@@ -124,6 +134,7 @@ class ChatFrame(wx.Frame):
     def on_send_btn_click(self, event):
         user_name = self.name_tc.GetValue()
         msg = self.input_tc.GetValue()
+        # 恢复消息输入框
         self.input_tc.SetValue('')
         self.input_tc.SetFocus()
         if user_name and msg:
@@ -158,7 +169,11 @@ class ChatFrame(wx.Frame):
         self.on_close(None)
 
     def on_key_up(self, event):
-        if event.GetUnicodeKey() == wx.WXK_RETURN:
+        # 判断是否发送消息
+        if (not wx.GetKeyState(wx.WXK_CONTROL)) and event.GetUnicodeKey() == wx.WXK_RETURN:
+            # 去除最后一行多余的换行
+            if self.input_tc.GetValue().endswith('\n'):
+                self.input_tc.SetValue(self.input_tc.GetValue()[:-1])
             self.on_send_btn_click(None)
 
 
